@@ -1,9 +1,6 @@
 from datetime import datetime
 import requests
 
-# import logging
-# logging.basicConfig(level=logging.DEBUG)
-
 today = datetime.today()
 
 # Moon phases
@@ -25,7 +22,7 @@ full_moon = next((p for p in phases if p['phase'] == "Full Moon"), None)
 
 print("\n")
 if full_moon:
-    print(f"Next Full Moon: {full_moon['phase']} - {full_moon['day']:02d}/{full_moon['month']:02d}/{full_moon['year']}")
+    print(f"Next Full Moon: {full_moon['day']:02d}/{full_moon['month']:02d}/{full_moon['year']}")
 
 
 # Solar eclipses
@@ -60,5 +57,3 @@ eclipse_date = f"{next_eclipse_data['day']:02d}/{next_eclipse_data['month']:02d}
 
 print("\n")
 print(f"Next Solar Eclipse in {loc}: {eclipse_type} - {eclipse_date}")
-
-
