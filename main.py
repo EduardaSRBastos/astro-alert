@@ -173,7 +173,7 @@ async def upcoming_moon_phases_cmd(interaction: discord.Interaction):
 async def next_eclipses_cmd(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
     try:
-        lat, lon, loc, _ = get_location()
+        lat, lon, loc, offset = get_location()
         (solar_type, solar_time), (lunar_type, lunar_time) = get_next_eclipses(lat, lon)
 
         embed = discord.Embed(
@@ -184,14 +184,17 @@ async def next_eclipses_cmd(interaction: discord.Interaction):
 
         embed.add_field(name="Solar Eclipse", value="", inline=False)
         if solar_time:
-            embed.add_field(name=f"🌖 **Type:** {solar_type}", value=f"🗓️ **When:** {solar_time:%d/%m/%Y - %H:%M}", inline=False)
+            solar_time_local = solar_time + offset
+            embed.add_field(name=f"🌖 **Type:** {solar_type}", value=f"🗓️ **When:** {solar_time_local:%d/%m/%Y - %H:%M}", inline=False)
         else:
             embed.add_field(name="🌖 Solar Eclipse", value="No solar eclipse found", inline=False)
 
         embed.add_field(name=" ", value=" ", inline=False) 
+        
         embed.add_field(name="Lunar Eclipse", value="", inline=False)
         if lunar_time:
-            embed.add_field(name=f"🌒 **Type:** {lunar_type}", value=f"🗓️ **When:** {lunar_time:%d/%m/%Y - %H:%M}", inline=False)
+            lunar_time_local = lunar_time + offset
+            embed.add_field(name=f"🌒 **Type:** {lunar_type}", value=f"🗓️ **When:** {lunar_time_local:%d/%m/%Y - %H:%M}", inline=False)
         else:
             embed.add_field(name="🌒 Lunar Eclipse", value="No lunar eclipse found", inline=False)
 
