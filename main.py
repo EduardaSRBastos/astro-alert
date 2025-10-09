@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
-from discord.ext import commands
-from datetime import datetime, timedelta
+from discord.ext import commands, tasks
+from datetime import datetime, timedelta, UTC
 from skyfield.api import load, Topos
 from skyfield import almanac, eclipselib
 import requests
@@ -9,6 +9,7 @@ import numpy as np
 import os
 from dotenv import load_dotenv
 from functools import lru_cache
+import json
 
 load_dotenv()
 
@@ -16,6 +17,7 @@ load_dotenv()
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
 # --- Global Skyfield setup with error handling ---
 try:
@@ -33,7 +35,14 @@ SUN_RADIUS_KM = 696340
 MOON_RADIUS_KM = 1737
 
 # --- Function to get location ---
+cached_location = None
+
 def get_location():
+    global cached_location
+
+    if cached_location:
+        return cached_location
+    
     lat = lon = 0
     loc = "Unknown"
     offset_str = "+0000"
@@ -46,10 +55,13 @@ def get_location():
         offset_str = ip_data.get("utc_offset", "+0000")
     except Exception as e:
         print(f"[WARN] Could not fetch location: {e}")
+
     offset = timedelta(hours=int(offset_str[1:3]), minutes=int(offset_str[3:]))
     if offset_str[0] == "-":
         offset = -offset
-    return lat, lon, loc, offset
+
+    cached_location = (lat, lon, loc, offset)
+    return cached_location
 
 # --- Astronomy calculation functions with daily cache refresh ---
 @lru_cache(maxsize=32)
@@ -122,6 +134,182 @@ def get_next_eclipses(lat=0, lon=0, today: datetime.date = datetime.today().date
         next_solar_time = t_next
 
     return (solar_type, next_solar_time), (lunar_type, next_lunar_time)
+
+# --- Track last posted events ---
+DATES_FILE = "dates.json"
+
+def load_last_events():
+    if not os.path.exists(DATES_FILE):
+        return {
+            "last_full_moon": None,
+            "last_moon_phase": None,
+            "last_solar_eclipse": None,
+            "last_lunar_eclipse": None,
+            "last_upcoming_phases": []
+        }
+    with open(DATES_FILE, "r") as f:
+        return json.load(f)
+
+def save_last_events(data):
+    tmp_file = f"{DATES_FILE}.tmp"
+    
+    with open(tmp_file, "w") as f:
+        json.dump(data, f, indent=4)
+    os.replace(tmp_file, DATES_FILE)
+
+
+@tasks.loop(hours=24)
+async def auto_post_updates():
+    last_events = load_last_events()
+
+    await bot.wait_until_ready()
+
+    channel = bot.get_channel(CHANNEL_ID)
+
+    if channel is None:
+        print("[WARN] Channel not found, check CHANNEL_ID")
+        return
+
+    lat, lon, loc, offset = get_location()
+
+    # Next Moon Phase
+    phase, when = get_next_moon_phase()
+
+    if last_events.get("last_moon_phase") != f"{phase}_{when.date().isoformat()}":
+        last_events["last_moon_phase"] = f"{phase}_{when.date().isoformat()}"
+
+        embed = discord.Embed(
+            title="🌙 Next Moon Phase",
+            color=discord.Color.blurple()
+        )
+        embed.add_field(
+            name=f"**🌗 Phase:** {phase}",
+            value=f"\n\n🗓️ **When:** {when:%d/%m/%Y}",
+            inline=False
+        )
+        await channel.send(embed=embed)
+
+    # Next Full Moon
+    full_moon = get_next_full_moon()
+    
+    if full_moon and last_events.get("last_full_moon") != full_moon.date().isoformat():
+        last_events["last_full_moon"] = full_moon.date().isoformat()
+
+        embed = discord.Embed(
+            title="🌕 Next Full Moon",
+            description=f"🗓️ **When:** {full_moon:%d/%m/%Y}" if full_moon else "Not found",
+            color=discord.Color.gold()
+        )
+        await channel.send(embed=embed)
+
+    # Upcoming Moon Phases
+    now = datetime.now(UTC)
+    phases = get_upcoming_moon_phases()
+    future_phases = [(phase, when) for phase, when in phases if when > now]
+
+    upcoming_phase_dates = [when.date().isoformat() for _, when in future_phases]
+
+    if upcoming_phase_dates != last_events.get("last_upcoming_phases", []):
+        last_events["last_upcoming_phases"] = upcoming_phase_dates
+        
+        embed = discord.Embed(
+            title="📅 Upcoming Moon Phases",
+            color=discord.Color.purple()
+        )
+        for phase, when in phases:
+            embed.add_field(name=f"**🌗 Phase:** {phase}", value=f"\n\n🗓️ **When:** {when:%d/%m/%Y}", inline=False)
+            embed.add_field(name=" ", value=" ", inline=False)
+        await channel.send(embed=embed)
+
+    # Next Eclipses
+    (solar_type, solar_time), (lunar_type, lunar_time) = get_next_eclipses(lat, lon)
+
+    embed = discord.Embed(
+        title="☀️🌙 Next Eclipses",
+        color=discord.Color.red()
+    )
+    embed.set_footer(text=f"📍 Location: {loc}")
+
+    # Solar Eclipse
+    embed.add_field(name="Solar Eclipse", value="", inline=False)
+
+    if solar_time:
+        solar_time_local = solar_time + offset
+
+        if last_events.get("last_solar_eclipse") != solar_time_local.date().isoformat():
+            last_events["last_solar_eclipse"] = solar_time_local.date().isoformat()
+            
+            embed.add_field(
+                name=f"🌖 **Type:** {solar_type}",
+                value=f"\n\n🗓️ **When:** {solar_time_local:%d/%m/%Y - %H:%M}",
+                inline=False
+            )
+    else:
+        embed.add_field(name="🌖 Solar Eclipse", value="No solar eclipse found", inline=False)
+
+    embed.add_field(name=" ", value=" ", inline=False)
+
+    # Lunar Eclipse
+    embed.add_field(name="Lunar Eclipse", value="", inline=False)
+
+    if lunar_time:
+        lunar_time_local = lunar_time + offset
+
+        if last_events.get("last_lunar_eclipse") != lunar_time_local.date().isoformat():
+            last_events["last_lunar_eclipse"] = lunar_time_local.date().isoformat()
+
+            embed.add_field(
+                name=f"🌒 **Type:** {lunar_type}",
+                value=f"\n\n🗓️ **When:** {lunar_time_local:%d/%m/%Y - %H:%M}",
+                inline=False
+            )
+    else:
+        embed.add_field(name="🌒 Lunar Eclipse", value="No lunar eclipse found", inline=False)
+
+    embed.add_field(name=" ", value=" ", inline=False)
+
+    await channel.send(embed=embed)
+
+    # Check if event is 12h or 2h away and send alert
+    def check_alert(event_name, event_time, label):
+        if not event_time:
+            return
+        diff = event_time - datetime.now(UTC)
+        hours = diff.total_seconds() / 3600
+
+        if 1.5 < hours <= 2.5 and last_events.get(f"{event_name}_alert") != "2h":
+            last_events[f"{event_name}_alert"] = "2h"
+            embed = discord.Embed(
+                title=f"⏰ {label} in 2 hours!",
+                color=discord.Color.orange()
+            )
+            embed.set_footer(text=f"📍 Location: {loc}")
+            return embed
+        
+        elif 11.5 < hours <= 12.5 and last_events.get(f"{event_name}_alert") != "12h":
+            last_events[f"{event_name}_alert"] = "12h"
+            embed = discord.Embed(
+                title=f"⏰ {label} in 12 hours!",
+                color=discord.Color.blue()
+            )
+            embed.set_footer(text=f"📍 Location: {loc}")
+            return embed
+        
+        return None
+
+    # Check moon phase, full moon, and eclipses
+    embeds_to_send = []
+    embeds_to_send.append(check_alert("moon_phase", when, phase))
+    embeds_to_send.append(check_alert("full_moon", full_moon, "Full Moon"))
+    embeds_to_send.append(check_alert("solar_eclipse", solar_time, "Solar Eclipse"))
+    embeds_to_send.append(check_alert("lunar_eclipse", lunar_time, "Lunar Eclipse"))
+
+    # Send any alerts
+    for e in embeds_to_send:
+        if e:
+            await channel.send(embed=e)
+
+    save_last_events(last_events)
 
 # --- Slash Commands with embeds ---
 @bot.tree.command(name="nextmoonphase", description="Shows the next moon phase.")
@@ -227,6 +415,10 @@ async def on_ready():
         guild = discord.Object(id=GUILD_ID)
         bot.tree.copy_global_to(guild=guild)
         await bot.tree.sync(guild=guild)
+
+        if not auto_post_updates.is_running():
+            auto_post_updates.start()
+
         print(f"Logged in as {bot.user} and synced commands to guild {GUILD_ID}")
     except Exception as e:
         print(f"[ERROR] Could not sync commands: {e}")
