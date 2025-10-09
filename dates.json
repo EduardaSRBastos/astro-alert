@@ -1,6 +1,12 @@
 {
-    "last_full_moon": null,
-    "last_moon_phase": null,
-    "last_solar_eclipse": null,
-    "last_lunar_eclipse": null
+    "last_full_moon": "2025-11-05",
+    "last_moon_phase": "Last Quarter_2025-10-13",
+    "last_solar_eclipse": "2026-08-12",
+    "last_lunar_eclipse": "2026-08-28",
+    "last_upcoming_phases": [
+        "2025-10-13",
+        "2025-10-21",
+        "2025-10-29",
+        "2025-11-05"
+    ]
 }
