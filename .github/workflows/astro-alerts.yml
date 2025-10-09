@@ -2,6 +2,7 @@ name: Post Astro Alerts
 on:
   schedule:
     - cron: '0 10 * * *'
+  workflow_dispatch:
 
 jobs:
   update:
@@ -9,10 +10,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run bot
         run: python main.py
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          GUILD_ID: ${{ secrets.GUILD_ID }}
