@@ -1,22 +1,37 @@
 name: Post Astro Alerts
 on:
   schedule:
-    - cron: '0 10 * * *'
+    - cron: '0 9 * * *'
 
 jobs:
   update-astro-alerts:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Run bot
+
+      - name: Run bot (max 10 minutes)
         run: python main.py
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
           GUILD_ID: ${{ secrets.GUILD_ID }}
+          MY_LOCATION: ${{ secrets.MY_LOCATION }}
+
+      - name: Commit and push updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dates.json
+          git commit -m "Update dates.json after auto astro alert run" || echo "No changes to commit"
+          git push
