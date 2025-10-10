@@ -418,8 +418,15 @@ async def clear_slash(interaction: discord.Interaction, amount: int = 100):
     if not interaction.guild.me.guild_permissions.manage_messages:
         await interaction.response.send_message("I don't have permission to delete messages!", ephemeral=True)
         return
+
+    amount = min(amount, 100)
     await interaction.response.send_message(f"Deleting up to {amount} messages...", ephemeral=True)
-    deleted = await interaction.channel.purge(limit=amount, check=lambda m: True)
+
+    deleted = await interaction.channel.purge(
+        limit=amount,
+        check=lambda m: not m.pinned
+    )
+
     await interaction.edit_original_response(content=f"Deleted {len(deleted)} messages.")
 
 # --- Sync commands ---
