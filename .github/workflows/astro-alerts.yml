@@ -1,7 +1,7 @@
 name: Post Astro Alerts
 on:
   schedule:
-    - cron: '0 */5 * * *'
+    - cron: '0 */12 * * *'
 
 jobs:
   update-astro-alerts:
@@ -19,8 +19,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run bot (max 5 hours)
-        run: timeout 270m python main.py
+      - name: Run bot
+        run: timeout 15m python main.py
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
