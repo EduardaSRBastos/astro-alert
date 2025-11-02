@@ -236,54 +236,41 @@ async def auto_post_updates():
             embed.add_field(name=" ", value=" ", inline=False)
         await channel.send(embed=embed)
 
-    # Next Eclipses
+     # Next Eclipses
     (solar_type, solar_time), (lunar_type, lunar_time) = get_next_eclipses(lat, lon)
 
-    embed = discord.Embed(
-        title="☀️🌙 Next Eclipses",
-        color=discord.Color.red()
-    )
-    embed.set_footer(text=f"📍 Location: {loc}")
+    if solar_time or lunar_time:
+        embed = discord.Embed(
+            title="☀️🌙 Next Eclipses",
+            color=discord.Color.red()
+        )
+        embed.set_footer(text=f"📍 Location: {loc}")
 
-    # Solar Eclipse
-    embed.add_field(name="Solar Eclipse", value="", inline=False)
+        # Solar Eclipse
+        if solar_time:
+            solar_time_local = solar_time + offset
+            if last_events.get("last_solar_eclipse") != solar_time_local.date().isoformat():
+                last_events["last_solar_eclipse"] = solar_time_local.date().isoformat()
+                embed.add_field(
+                    name=f"☀️ **Solar Eclipse ({solar_type})**",
+                    value=f"🗓️ **When:** {solar_time_local:%d/%m/%Y - %H:%M}",
+                    inline=False
+                )
 
-    if solar_time:
-        solar_time_local = solar_time + offset
+        # Lunar Eclipse
+        if lunar_time:
+            lunar_time_local = lunar_time + offset
+            if last_events.get("last_lunar_eclipse") != lunar_time_local.date().isoformat():
+                last_events["last_lunar_eclipse"] = lunar_time_local.date().isoformat()
+                embed.add_field(
+                    name=f"🌙 **Lunar Eclipse ({lunar_type})**",
+                    value=f"🗓️ **When:** {lunar_time_local:%d/%m/%Y - %H:%M}",
+                    inline=False
+                )
 
-        if last_events.get("last_solar_eclipse") != solar_time_local.date().isoformat():
-            last_events["last_solar_eclipse"] = solar_time_local.date().isoformat()
-            
-            embed.add_field(
-                name=f"🌖 **Type:** {solar_type}",
-                value=f"\n\n🗓️ **When:** {solar_time_local:%d/%m/%Y - %H:%M}",
-                inline=False
-            )
-    else:
-        embed.add_field(name="🌖 Solar Eclipse", value="No solar eclipse found", inline=False)
+        if len(embed.fields) > 0:
+            await channel.send(embed=embed)
 
-    embed.add_field(name=" ", value=" ", inline=False)
-
-    # Lunar Eclipse
-    embed.add_field(name="Lunar Eclipse", value="", inline=False)
-
-    if lunar_time:
-        lunar_time_local = lunar_time + offset
-
-        if last_events.get("last_lunar_eclipse") != lunar_time_local.date().isoformat():
-            last_events["last_lunar_eclipse"] = lunar_time_local.date().isoformat()
-
-            embed.add_field(
-                name=f"🌒 **Type:** {lunar_type}",
-                value=f"\n\n🗓️ **When:** {lunar_time_local:%d/%m/%Y - %H:%M}",
-                inline=False
-            )
-    else:
-        embed.add_field(name="🌒 Lunar Eclipse", value="No lunar eclipse found", inline=False)
-
-    embed.add_field(name=" ", value=" ", inline=False)
-
-    await channel.send(embed=embed)
 
     # Check if event is 12h or 2h away and send alert
     def check_alert(event_name, event_time, label):
