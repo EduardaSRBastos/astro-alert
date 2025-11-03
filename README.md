@@ -1,77 +1,12 @@
 <div align="center">
   
-# Repository Template
-[![GitHub License](https://img.shields.io/github/license/EduardaSRBastos/repository-template?style=plastic&color=darkred)](https://github.com/EduardaSRBastos/repository-template?tab=MIT-1-ov-file)
-[![GitHub Release](https://img.shields.io/github/v/release/EduardaSRBastos/repository-template?style=plastic&color=orange)](https://github.com/EduardaSRBastos/repository-template/releases)
-[![GitHub repo size](https://img.shields.io/github/repo-size/EduardaSRBastos/repository-template?style=plastic)](https://github.com/EduardaSRBastos/repository-template)
+# Astro Alert
+[![GitHub License](https://img.shields.io/github/license/EduardaSRBastos/astro-alert?style=plastic&color=darkred)](https://github.com/EduardaSRBastos/astro-alert?tab=MIT-1-ov-file)
+[![GitHub branch check runs](https://img.shields.io/github/check-runs/EduardaSRBastos/astro-alert/main?style=plastic)](https://github.com/EduardaSRBastos/astro-alert/actions)
+[![GitHub repo size](https://img.shields.io/github/repo-size/EduardaSRBastos/astro-alert?style=plastic)](https://github.com/EduardaSRBastos/astro-alert)
+[![Post Astro Alerts](https://github.com/EduardaSRBastos/astro-alert/actions/workflows/astro-alerts.yml/badge.svg)](https://github.com/EduardaSRBastos/astro-alert/actions/workflows/astro-alerts.yml)
 
-<p><i>A structured GitHub template with essential resources for new projects.</i></p>
-
- </div>
-
-<br>
-
-## Table of Contents
-- [Features](#features)
-- [How to Use](#how-to-use)
-- [Contributing](#contributing)
-- [License](#license)
-- [README Template](#readme-template)
-
-<br>
-
-## Features
-
-This repository template includes the following essential resources for starting a new project:
-
-- **MIT License**: A standard open-source license.
-- **GitHub Actions**: Pre-configured GitHub Actions for automating workflows, such as the Update License Year Action.
-- **.gitignore**: A `.gitignore` file for standard project types.
-- **README.md Template**: A template for a clean, informative README with sections like features, how-to-use, contributing, and license information.
-- **Code of Conduct**: Pre-configured Code of Conduct for open-source projects.
-
-## How to Use
-
-1. **Create a new repository** from this template.
-   - Go to the repository page: [Repository Template](https://github.com/EduardaSRBastos/repository-template)
-   - Click the **"Use this template"** button to create your own repository with all of the resources included.
-   
-2. **Configure the repository**:
-   - Update the **README.md** file to reflect your project's details.
-   - Customize the **GitHub Actions** workflows if necessary.
-   - Update the **LICENSE** file with your preferred year or contributor information.
-
-3. **Add or modify workflows**:
-   - This template comes with the GitHub Actions workflow for updating the LICENSE year automatically. You can edit or add more workflows as needed.
-
-4. **Start your project**:
-   - Once your repository is set up, you can start adding your project's files, structure, and code.
-   - Contribute and invite others to help!
-
-## Contributing
-- Support this project by giving it a star ⭐. Thanks!
-- Feel free to suggest improvements or report any issues in the repository.
-
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## README Template
-
-You can use the following template for your project README:
-
-```markdown
-
-<div align="center">
-  
-# Project Name
-[![GitHub License](https://img.shields.io/github/license/EduardaSRBastos/project-name?style=plastic&color=darkred)](https://github.com/EduardaSRBastos/project-name?tab=MIT-1-ov-file)
-[![GitHub Release](https://img.shields.io/github/v/release/EduardaSRBastos/project-name?style=plastic&color=orange)](https://github.com/EduardaSRBastos/repository-template/releases)
-[![GitHub branch check runs](https://img.shields.io/github/check-runs/EduardaSRBastos/project-name/main?style=plastic)](https://github.com/EduardaSRBastos/project-name/actions)
-[![GitHub repo size](https://img.shields.io/github/repo-size/EduardaSRBastos/project-name?style=plastic)](https://github.com/EduardaSRBastos/project-name)
-
-<p><i>A brief description of the project.</i></p>
-
-<kbd> ![image](printscreen-image-url) </kbd>
+<p><i>A Discord bot that posts real-time moon phases, eclipses, and astronomy alerts, and lets users explore upcoming celestial events.</i></p>
 
  </div>
 
@@ -88,28 +23,53 @@ You can use the following template for your project README:
 
 ## Features
 
-- **Feature 1**: Description of the Feature 1.
-- **Feature 2**: Description of the Feature 2.
-- **Feature 3**: Description of the Feature 3.
+* **Automatic Astronomical Updates**: Posts daily updates about moon phases, full moons, and upcoming eclipses directly to your Discord channel.
+* **Event Alerts**: Sends smart alerts when a celestial event (like a full moon or eclipse) is 12 hours or 2 hours away.
+* **Eclipse Tracking**: Calculates upcoming solar and lunar eclipses based on your configured or detected location.
+* **Slash Commands**: Includes `/nextmoonphase`, `/nextfullmoon`, `/upcomingmoonphases`, and `/nexteclipses` for quick event info.
+* **Location-Aware Data**: Automatically detects your location or uses a custom one from environment variables.
+* **Channel Cleanup**: Provides a `/clear` command to delete recent messages (excluding pinned ones).
+* **Persistent Event Storage**: Keeps track of previously posted events in `dates.json` to avoid duplicates.
+* **Automated Scheduling**: Runs automatically via GitHub Actions, staying active for scheduled time periods each day.
 
 <br>
 
 ## How to Use
 
-1. **Step 1**: Description of the Step 1.
-2. **Step 2**: Description of the Step 2.
-3. **Step 3**: Description of the Step 3.
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/EduardaSRBastos/astro-alert.git
+   cd astro-alert
+   ```
+
+2. **Set Up Environment Variables**
+   Create a `.env` file in the project root with the following:
+
+   ```env
+   DISCORD_TOKEN=your_discord_bot_token
+   CHANNEL_ID=your_discord_channel_id
+   GUILD_ID=your_discord_server_id
+   MY_LOCATION={"latitude":0,"longitude":0,"region":"YourRegion","utc_offset":"+0000"}
+   ```
+
+3. **Install Dependencies**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Run the Bot Locally (Optional)**
+
+   ```bash
+   python main.py
+   ```
+
+5. **Automate with GitHub Actions**
+   The bot runs automatically every 12 hours for 5 minutes (configurable).
+   Edit `.github/workflows/astro-alerts.yml` to adjust the schedule or runtime.
 
 <br>
-
-## PageSpeed Insights Performance Score
-<div align="center">
-  
-| [Desktop](https://pagespeed.web.dev/analysis/https-eduardasrbastos-github-io-project-name/zacmq8kevy?form_factor=desktop) | [Mobile](https://pagespeed.web.dev/analysis/https-eduardasrbastos-github-io-project-name/zacmq8kevy?form_factor=mobile) |
-|-------|-------|
-| <kbd> ![image](desktop score image url) </kbd> | <kbd> ![image](mobile score image url) </kbd> |
-
-</div>
 
 ## Contributing
 - Support this project by giving it a star ⭐. Thanks!
@@ -117,6 +77,3 @@ You can use the following template for your project README:
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-```
-
