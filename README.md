@@ -15,7 +15,6 @@
 ## Table of Contents
 - [Features](#features)
 - [How to Use](#how-to-use)
-- [Performance Score](#pagespeed-insights-performance-score)
 - [Contributing](#contributing)
 - [License](#license)
 
