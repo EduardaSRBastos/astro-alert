@@ -33,6 +33,44 @@ except Exception as e:
 AU_KM = 149597870
 SUN_RADIUS_KM = 696340
 MOON_RADIUS_KM = 1737
+METEOR_SHOWERS = [
+    {
+        "name": "Quadrantids",
+        "peak": (1, 3),
+        "start": (12, 28),
+        "end": (1, 12),
+        "hemisphere": "Northern",
+        "best_time": "After midnight",
+        "zhr": 120
+    },
+    {
+        "name": "Lyrids",
+        "peak": (4, 22),
+        "start": (4, 16),
+        "end": (4, 25),
+        "hemisphere": "Both",
+        "best_time": "Late night to dawn",
+        "zhr": 18
+    },
+    {
+        "name": "Perseids",
+        "peak": (8, 12),
+        "start": (7, 17),
+        "end": (8, 24),
+        "hemisphere": "Northern",
+        "best_time": "After midnight",
+        "zhr": 100
+    },
+    {
+        "name": "Geminids",
+        "peak": (12, 14),
+        "start": (12, 4),
+        "end": (12, 17),
+        "hemisphere": "Both",
+        "best_time": "All night",
+        "zhr": 120
+    }
+]
 
 # --- Function to get location ---
 cached_location = None
@@ -77,6 +115,37 @@ def get_location():
 
     cached_location = (lat, lon, loc, offset)
     return cached_location
+
+def get_hemisphere(lat: float):
+    if lat > 0:
+        return "Northern"
+    elif lat < 0:
+        return "Southern"
+    return "Both"
+
+def get_moon_illumination(time):
+    t = ts.from_datetime(time)
+    phase_angle = almanac.moon_phase(eph, t).degrees
+    illumination = (1 + np.cos(np.radians(phase_angle))) / 2
+    return int(illumination * 100)
+
+def calculate_meteor_visibility(shower, hemisphere, moon_illum):
+    visibility = 100
+
+    # Hemisphere penalty
+    if shower["hemisphere"] != "Both" and shower["hemisphere"] != hemisphere:
+        visibility -= 60  # radiant very low or invisible
+
+    # Moon brightness penalty
+    if moon_illum > 75:
+        visibility -= 50
+    elif moon_illum > 50:
+        visibility -= 30
+    elif moon_illum > 25:
+        visibility -= 15
+
+    return max(0, min(visibility, 100))
+
 
 # --- Astronomy calculation functions with daily cache refresh ---
 @lru_cache(maxsize=32)
@@ -150,6 +219,34 @@ def get_next_eclipses(lat=0, lon=0, today: datetime.date = datetime.today().date
 
     return (solar_type, next_solar_time), (lunar_type, next_lunar_time)
 
+def get_next_meteor_shower():
+    today = datetime.now(UTC).date()
+
+    candidates = []
+
+    for shower in METEOR_SHOWERS:
+        start_month, start_day = shower["start"]
+        end_month, end_day = shower["end"]
+        peak_month, peak_day = shower["peak"]
+
+        start_date = datetime(today.year, start_month, start_day, tzinfo=UTC)
+        end_date = datetime(today.year, end_month, end_day, tzinfo=UTC)
+        peak_date = datetime(today.year, peak_month, peak_day, tzinfo=UTC)
+
+        # If the event already passed this year, shift to next year
+        if end_date < datetime.now(UTC):
+            start_date = start_date.replace(year=today.year + 1)
+            end_date = end_date.replace(year=today.year + 1)
+            peak_date = peak_date.replace(year=today.year + 1)
+
+        candidates.append((peak_date, start_date, end_date, shower))
+
+    # Sort by peak date
+    candidates.sort(key=lambda x: x[0])
+    peak_date, start_date, end_date, shower = candidates[0]
+    return shower, start_date, end_date, peak_date
+
+
 # --- Track last posted events ---
 DATES_FILE = "dates.json"
 
@@ -186,6 +283,7 @@ async def auto_post_updates():
         return
 
     lat, lon, loc, offset = get_location()
+    hemisphere = get_hemisphere(lat)
 
     # Next Moon Phase
     phase, when = get_next_moon_phase()
@@ -271,6 +369,58 @@ async def auto_post_updates():
         if len(embed.fields) > 0:
             await channel.send(embed=embed)
 
+    shower, start_date, end_date, peak_time = get_next_meteor_shower()
+
+    if shower and peak_time:
+        moon_illum = get_moon_illumination(peak_time)
+        visibility = calculate_meteor_visibility(shower, hemisphere, moon_illum)
+
+        def meteor_alert(event_key):
+            diff = peak_time - datetime.now(UTC)
+            hours = diff.total_seconds() / 3600
+
+            if 1.5 < hours <= 2.5 and last_events.get(event_key) != "2h":
+                last_events[event_key] = "2h"
+                return "2h"
+            if 11.5 < hours <= 12.5 and last_events.get(event_key) != "12h":
+                last_events[event_key] = "12h"
+                return "12h"
+            return None
+
+        alert = meteor_alert("meteor_alert")
+
+        if alert:
+            embed = discord.Embed(
+                title="🌠 Meteor Shower Alert",
+                color=discord.Color.teal()
+            )
+
+            embed.description = f"⏰ **{shower['name']} peaks in {alert}**"
+
+            embed.add_field(
+                name="📊 Visibility Conditions",
+                value=(
+                    f"🌍 **Hemisphere:** {hemisphere}\n"
+                    f"🌕 **Moon illumination:** {moon_illum}%\n"
+                    f"👁️ **Estimated visibility:** {visibility}%\n"
+                    f"☄️ **ZHR:** {shower['zhr']} meteors/hour"
+                ),
+                inline=False
+            )
+
+            embed.add_field(
+                name="🗓️ Dates",
+                value=(
+                    f"📅 Start: {start_date + offset:%d/%m/%Y}\n"
+                    f"📅 Peak: {peak_time + offset:%d/%m/%Y}\n"
+                    f"📅 End: {end_date + offset:%d/%m/%Y}\n"
+                    f"⏰ Best time: {shower['best_time']}"
+                ),
+                inline=False
+            )
+
+            embed.set_footer(text=f"📍 Location: {loc}")
+            await channel.send(embed=embed)
 
     # Check if event is 12h or 2h away and send alert
     def check_alert(event_name, event_time, label):
@@ -391,6 +541,53 @@ async def next_eclipses_cmd(interaction: discord.Interaction):
         embed.add_field(name=" ", value=" ", inline=False) 
 
         await interaction.followup.send(embed=embed)
+    except Exception as e:
+        await interaction.followup.send(f"Error: {e}")
+
+@bot.tree.command(name="nextmeteors", description="Shows the next meteor shower peak.")
+async def next_meteors_cmd(interaction: discord.Interaction):
+    await interaction.response.defer(thinking=True)
+    try:
+        lat, lon, loc, offset = get_location()
+        shower, start_date, end_date, peak_time = get_next_meteor_shower()
+        moon_illum = get_moon_illumination(peak_time)
+        hemisphere = get_hemisphere(lat)
+        visibility = calculate_meteor_visibility(shower, hemisphere, moon_illum)
+
+        if not shower:
+            await interaction.followup.send("No upcoming meteor showers found.")
+            return
+
+        embed = discord.Embed(
+            title=f"🌠 Next Meteor Shower: {shower['name']}",
+            color=discord.Color.teal()
+        )
+
+        embed.add_field(
+            name="📊 Visibility Conditions",
+            value=(
+                f"🌍 **Hemisphere:** {hemisphere}\n"
+                f"🌕 **Moon illumination:** {moon_illum}%\n"
+                f"👁️ **Estimated visibility:** {visibility}%\n"
+                f"☄️ **ZHR:** {shower['zhr']} meteors/hour"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="🗓️ Dates",
+            value=(
+                f"📅 Start: {start_date + offset:%d/%m/%Y}\n"
+                f"📅 Peak: {peak_time + offset:%d/%m/%Y}\n"
+                f"📅 End: {end_date + offset:%d/%m/%Y}\n"
+                f"⏰ Best time: {shower['best_time']}"
+            ),
+            inline=False
+        )
+
+        embed.set_footer(text=f"📍 Location: {loc}")
+        await interaction.followup.send(embed=embed)
+
     except Exception as e:
         await interaction.followup.send(f"Error: {e}")
 

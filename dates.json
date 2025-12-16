@@ -9,5 +9,6 @@
         "2026-01-03",
         "2026-01-10"
     ],
-    "full_moon_alert": "12h"
+    "full_moon_alert": "12h",
+    "meteor_alert": "12h"
 }
