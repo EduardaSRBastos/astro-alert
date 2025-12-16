@@ -6,9 +6,9 @@
 [![GitHub repo size](https://img.shields.io/github/repo-size/EduardaSRBastos/astro-alert?style=plastic)](https://github.com/EduardaSRBastos/astro-alert)
 [![Post Astro Alerts](https://github.com/EduardaSRBastos/astro-alert/actions/workflows/astro-alerts.yml/badge.svg)](https://github.com/EduardaSRBastos/astro-alert/actions/workflows/astro-alerts.yml)
 
-<p><i>A Discord bot that posts real-time moon phases, eclipses, and astronomy alerts, and lets users explore upcoming celestial events.</i></p>
+<p><i>A Discord bot that posts real-time moon phases, eclipses, meteor showers, and astronomy alerts, and lets users explore upcoming celestial events.</i></p>
 
- </div>
+</div>
 
 <br>
 
@@ -22,10 +22,11 @@
 
 ## Features
 
-* **Automatic Astronomical Updates**: Posts daily updates about moon phases, full moons, and upcoming eclipses directly to your Discord channel.
-* **Event Alerts**: Sends smart alerts when a celestial event (like a full moon or eclipse) is 12 hours or 2 hours away.
+* **Automatic Astronomical Updates**: Posts daily updates about moon phases, full moons, upcoming eclipses, and meteor showers directly to your Discord channel.
+* **Event Alerts**: Sends smart alerts when a celestial event (like a full moon, eclipse, or meteor shower peak) is 12 hours or 2 hours away.
 * **Eclipse Tracking**: Calculates upcoming solar and lunar eclipses based on your configured or detected location.
-* **Slash Commands**: Includes `/nextmoonphase`, `/nextfullmoon`, `/upcomingmoonphases`, and `/nexteclipses` for quick event info.
+* **Meteor Shower Tracking**: Provides information on upcoming meteor showers, including peak dates, visibility conditions, and estimated meteors per hour.
+* **Slash Commands**: Includes `/nextmoonphase`, `/nextfullmoon`, `/upcomingmoonphases`, `/nexteclipses`, and `/nextmeteors` for quick event info.
 * **Location-Aware Data**: Automatically detects your location or uses a custom one from environment variables.
 * **Channel Cleanup**: Provides a `/clear` command to delete recent messages (excluding pinned ones).
 * **Persistent Event Storage**: Keeps track of previously posted events in `dates.json` to avoid duplicates.
