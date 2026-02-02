@@ -1,13 +1,13 @@
 {
-    "last_full_moon": "2026-02-01",
-    "last_moon_phase": "Full Moon_2026-02-01",
+    "last_full_moon": "2026-03-03",
+    "last_moon_phase": "Last Quarter_2026-02-09",
     "last_solar_eclipse": "2026-08-12",
     "last_lunar_eclipse": "2026-08-28",
     "last_upcoming_phases": [
-        "2026-02-01",
         "2026-02-09",
         "2026-02-17",
-        "2026-02-24"
+        "2026-02-24",
+        "2026-03-03"
     ],
     "full_moon_alert": "12h",
     "meteor_alert": "12h"
