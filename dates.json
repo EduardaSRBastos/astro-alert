@@ -4,10 +4,10 @@
     "last_solar_eclipse": "2027-08-02",
     "last_lunar_eclipse": "2026-08-28",
     "last_upcoming_phases": [
-        "2026-08-28",
         "2026-09-04",
         "2026-09-11",
-        "2026-09-18"
+        "2026-09-18",
+        "2026-09-26"
     ],
     "full_moon_alert": "12h",
     "meteor_alert": "12h"
