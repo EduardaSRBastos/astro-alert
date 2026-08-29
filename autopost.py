@@ -24,7 +24,9 @@ def load_last_events():
             "last_moon_phase": None,
             "last_solar_eclipse": None,
             "last_lunar_eclipse": None,
-            "last_upcoming_phases": []
+            "last_upcoming_phases": [],
+            "meteor_alert_12h": None,
+            "meteor_alert_2h": None
         }
     with open(DATES_FILE, "r") as f:
         return json.load(f)
@@ -58,12 +60,12 @@ async def auto_post_updates(bot):
         last_events["last_moon_phase"] = f"{phase}_{when.date().isoformat()}"
 
         embed = discord.Embed(
-            title="🌙 Next Moon Phase",
+            title="🌙 Next Moon Phase",
             color=discord.Color.blurple()
         )
         embed.add_field(
-            name=f"**🌗 Phase:** {phase}",
-            value=f"\n\n🗓️ **When:** {when:%d/%m/%Y}",
+            name=f"**🌗 Phase:** {phase}",
+            value=f"\n\n🗓️ **When:** {when:%d/%m/%Y}",
             inline=False
         )
         await channel.send(embed=embed)
@@ -75,8 +77,8 @@ async def auto_post_updates(bot):
         last_events["last_full_moon"] = full_moon.date().isoformat()
 
         embed = discord.Embed(
-            title="🌕 Next Full Moon",
-            description=f"🗓️ **When:** {full_moon:%d/%m/%Y}",
+            title="🌕 Next Full Moon",
+            description=f"🗓️ **When:** {full_moon:%d/%m/%Y}",
             color=discord.Color.gold()
         )
         await channel.send(embed=embed)
@@ -91,77 +93,94 @@ async def auto_post_updates(bot):
         last_events["last_upcoming_phases"] = upcoming_phase_dates
 
         embed = discord.Embed(
-            title="📅 Upcoming Moon Phases",
+            title="📅 Upcoming Moon Phases",
             color=discord.Color.purple()
         )
         for phase, when in phases:
             embed.add_field(
-                name=f"**🌗 Phase:** {phase}",
-                value=f"\n\n🗓️ **When:** {when:%d/%m/%Y}",
+                name=f"**🌗 Phase:** {phase}",
+                value=f"\n\n🗓️ **When:** {when:%d/%m/%Y}",
                 inline=False
             )
-            embed.add_field(name=" ", value=" ", inline=False)
+            embed.add_field(name=" ", value=" ", inline=False)
         await channel.send(embed=embed)
 
     # --- Next Eclipses ---
     (solar_type, solar_time), (lunar_type, lunar_time) = get_next_eclipses(lat, lon)
 
-    if solar_time or lunar_time:
+    def eclipse_alert(key, event_time):
+        if not event_time:
+            return False
+        hours_away = (event_time - datetime.now(UTC)).total_seconds() / 3600
+        event_id = event_time.date().isoformat()
+        already_alerted = last_events.get(key) == event_id
+
+        if hours_away <= 24 and not already_alerted:
+            last_events[key] = event_id
+            return True
+        return False
+
+    solar_due = eclipse_alert("last_solar_eclipse", solar_time)
+    lunar_due = eclipse_alert("last_lunar_eclipse", lunar_time)
+
+    if solar_due or lunar_due:
         embed = discord.Embed(
-            title="☀️🌙 Next Eclipses",
+            title="☀️🌙 Next Eclipse",
             color=discord.Color.red()
         )
-        embed.set_footer(text=f"📍 Location: {loc}")
+        embed.set_footer(text=f"📍 Location: {loc}")
 
-        if solar_time:
+        if solar_due:
             solar_time_local = solar_time + offset
-            if last_events.get("last_solar_eclipse") != solar_time_local.date().isoformat():
-                last_events["last_solar_eclipse"] = solar_time_local.date().isoformat()
-                embed.add_field(
-                    name=f"☀️ **Solar Eclipse ({solar_type})**",
-                    value=f"🗓️ **When:** {solar_time_local:%d/%m/%Y - %H:%M}",
-                    inline=False
-                )
+            embed.add_field(
+                name=f"☀️ **Solar Eclipse ({solar_type})**",
+                value=f"🗓️ **When:** {solar_time_local:%d/%m/%Y - %H:%M}",
+                inline=False
+            )
 
-        if lunar_time:
+        if lunar_due:
             lunar_time_local = lunar_time + offset
-            if last_events.get("last_lunar_eclipse") != lunar_time_local.date().isoformat():
-                last_events["last_lunar_eclipse"] = lunar_time_local.date().isoformat()
-                embed.add_field(
-                    name=f"🌙 **Lunar Eclipse ({lunar_type})**",
-                    value=f"🗓️ **When:** {lunar_time_local:%d/%m/%Y - %H:%M}",
-                    inline=False
-                )
+            embed.add_field(
+                name=f"🌙 **Lunar Eclipse ({lunar_type})**",
+                value=f"🗓️ **When:** {lunar_time_local:%d/%m/%Y - %H:%M}",
+                inline=False
+            )
 
-        if embed.fields:
-            await channel.send(embed=embed)
+        await channel.send(embed=embed)
 
-    # --- Meteor Shower Alerts ---
+        # --- Meteor Shower Alerts ---
     shower, start_date, end_date, peak_time = get_next_meteor_shower()
 
     if shower and peak_time:
         moon_illum = get_moon_illumination(peak_time)
         visibility = calculate_meteor_visibility(shower, hemisphere, moon_illum)
 
-        def meteor_alert(key):
-            diff = peak_time - datetime.now(UTC)
-            hours = diff.total_seconds() / 3600
-            if 1.5 < hours <= 2.5 and last_events.get(key) != "2h":
-                last_events[key] = "2h"
-                return "2h"
-            if 11.5 < hours <= 12.5 and last_events.get(key) != "12h":
-                last_events[key] = "12h"
-                return "12h"
-            return None
+        event_id = peak_time.date().isoformat()
+        hours_away = (peak_time - datetime.now(UTC)).total_seconds() / 3600
 
-        alert = meteor_alert("meteor_alert")
+        def meteor_stage_due(key, threshold):
+            already_alerted = last_events.get(key) == event_id
+            if hours_away <= threshold and not already_alerted:
+                last_events[key] = event_id
+                return True
+            return False
 
-        if alert:
+        alert_2h = meteor_stage_due("meteor_alert_2h", 2)
+        alert_12h = None
+        if not alert_2h:
+            alert_12h = meteor_stage_due("meteor_alert_12h", 12)
+
+        alert_label = "2h" if alert_2h else ("12h" if alert_12h else None)
+
+        if alert_2h:
+            last_events["meteor_alert_12h"] = event_id
+
+        if alert_label:
             embed = discord.Embed(
                 title="🌠 Meteor Shower Alert",
                 color=discord.Color.teal()
             )
-            embed.description = f"⏰ **{shower['name']} peaks in {alert}**"
+            embed.description = f"⏰ **{shower['name']} peaks in less than {alert_label}**"
 
             embed.add_field(
                 name="📊 Visibility Conditions",
